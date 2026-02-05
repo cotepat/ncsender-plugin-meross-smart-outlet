@@ -61,9 +61,13 @@ export function onLoad(ctx) {
   
   // Register command handler
   registerCommandHandler(ctx);
-  
-  // Register plugin settings UI
-  registerPluginSettings(ctx);
+
+  // Register tool menu item (icon in plugin table)
+  if (ctx.registerToolMenu) {
+    ctx.registerToolMenu('Meross Smart Outlet Controller', () => {
+      showSettingsDialog(ctx);
+    }, { icon: 'logo.png' });
+  }
   
   // Start discovery watcher (works without CNC connection)
   startDiscoveryWatcher(ctx);
@@ -400,7 +404,25 @@ function registerCommandHandler(ctx) {
  * Register plugin settings UI
  */
 function registerPluginSettings(ctx) {
-  const html = `
+  const html = getConfigUiHtml();
+  ctx.registerConfigUI(html);
+  
+  // Register test outlet API endpoint
+  ctx.registerAPIEndpoint = ctx.registerAPIEndpoint || function() {};
+}
+
+function showSettingsDialog(ctx) {
+  if (!ctx.showDialog) {
+    ctx.log('showDialog not available in this ncSender version.');
+    return;
+  }
+
+  const html = getConfigUiHtml();
+  ctx.showDialog('Meross Smart Outlet Controller', html, { closable: true });
+}
+
+function getConfigUiHtml() {
+  return `
     <style>
       .plugin-settings {
         font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
@@ -412,25 +434,64 @@ function registerPluginSettings(ctx) {
       
       .ms-tabs {
         display: flex;
-        gap: 4px;
-        border-bottom: 1px solid var(--color-border, #333);
-        margin-bottom: 8px;
+        border-bottom: 1px solid var(--color-border);
+        background: var(--color-surface-muted);
+        padding: var(--gap-xs) var(--gap-md) 0 var(--gap-md);
+        gap: 2px;
+        border-left: 1px solid var(--color-border);
+        border-right: 1px solid var(--color-border);
+        border-top: 1px solid var(--color-border);
+        border-radius: var(--radius-medium) var(--radius-medium) 0 0;
       }
       
       .ms-tab {
         all: unset;
+        display: flex;
+        align-items: center;
+        gap: var(--gap-xs);
+        padding: var(--gap-sm) var(--gap-md);
+        background: transparent !important;
+        border: none !important;
+        border-radius: var(--radius-small) var(--radius-small) 0 0 !important;
+        color: var(--color-text-secondary) !important;
         cursor: pointer;
-        padding: 4px 8px;
-        font-size: 0.78rem;
-        color: var(--color-text-secondary);
-        border-radius: 4px 4px 0 0;
+        transition: all 0.2s ease;
+        font-size: 0.95rem;
+        font-weight: 600;
+        margin-top: var(--gap-xs);
+        position: relative;
+        box-sizing: border-box;
+      }
+      
+      .ms-tab:hover {
+        background: var(--color-surface) !important;
+        color: var(--color-text-primary);
+        transform: translateY(-1px);
+        filter: none !important;
       }
       
       .ms-tab.active {
-        color: var(--color-text-primary);
-        background: var(--color-surface, #2a2a2a);
-        border: 1px solid var(--color-border, #333);
-        border-bottom: none;
+        background: var(--color-surface) !important;
+        color: var(--color-text-primary) !important;
+        box-shadow: var(--shadow-elevated);
+        border-bottom: 2px solid var(--color-accent) !important;
+        filter: none !important;
+      }
+
+      .ms-tab.active::after {
+        content: '';
+        position: absolute;
+        bottom: -1px;
+        left: 0;
+        right: 0;
+        height: 2px;
+        background: var(--gradient-accent);
+        border-radius: 2px 2px 0 0;
+      }
+
+      .ms-tab:focus-visible {
+        outline: 2px solid var(--color-accent);
+        outline-offset: 2px;
       }
       
       .ms-tab-content {
@@ -438,7 +499,8 @@ function registerPluginSettings(ctx) {
       }
       
       .ms-tab-content.active {
-        display: block;
+        display: flex;
+        flex-direction: column;
       }
       
       @media (max-width: 900px) {
@@ -448,18 +510,20 @@ function registerPluginSettings(ctx) {
       }
       
       .settings-section {
-        margin-bottom: 8px;
-        border: 1px solid var(--color-border, #333);
-        border-radius: 6px;
-        padding: 10px;
-        background: var(--color-surface-muted, #1a1a1a);
+        margin-bottom: 12px;
+        border: 1px solid var(--color-border);
+        border-radius: var(--radius-medium);
+        padding: 14px;
+        background: var(--color-surface-muted);
+        box-shadow: var(--shadow-elevated);
       }
       
       .settings-section h3 {
         margin-top: 0;
-        margin-bottom: 6px;
+        margin-bottom: 8px;
         color: var(--color-text-primary);
-        font-size: 0.9rem;
+        font-size: 0.95rem;
+        font-weight: 600;
       }
       
       .form-group {
@@ -476,18 +540,19 @@ function registerPluginSettings(ctx) {
       .form-group input,
       .form-group select {
         width: 100%;
-        padding: 5px 8px;
-        background: var(--color-surface, #2a2a2a);
-        border: 1px solid var(--color-border, #333);
-        border-radius: 4px;
+        padding: 6px 10px;
+        background: var(--color-surface);
+        border: 1px solid var(--color-border);
+        border-radius: var(--radius-small);
         color: var(--color-text-primary);
-        font-size: 0.8rem;
+        font-size: 0.85rem;
       }
       
       .form-group input:focus,
       .form-group select:focus {
         outline: none;
-        border-color: var(--color-primary, #007bff);
+        border-color: var(--color-accent);
+        box-shadow: 0 0 0 2px rgba(79, 124, 255, 0.25);
       }
       
       .help-text {
@@ -549,23 +614,23 @@ function registerPluginSettings(ctx) {
       }
       
       .outlet-test-btn.on {
-        background: #28a745;
-        color: white;
-        border-color: #28a745;
+        background: #2fb36b !important;
+        color: #0f1b1f !important;
+        border-color: #2fb36b !important;
       }
       
       .outlet-test-btn.on:hover {
-        background: #218838;
+        background: #279a5c;
       }
       
       .outlet-test-btn.off {
-        background: #dc3545;
-        color: white;
-        border-color: #dc3545;
+        background: #e25b62 !important;
+        color: #1b0f12 !important;
+        border-color: #e25b62 !important;
       }
       
       .outlet-test-btn.off:hover {
-        background: #c82333;
+        background: #c24c52;
       }
       
       .outlet-test-btn:disabled {
@@ -596,11 +661,12 @@ function registerPluginSettings(ctx) {
       }
       
       .command-mapping {
-        background: var(--color-surface, #2a2a2a);
-        border: 1px solid var(--color-border, #444);
-        border-radius: 6px;
-        padding: 10px;
-        margin-bottom: 8px;
+        background: var(--color-surface);
+        border: 1px solid var(--color-border);
+        border-radius: var(--radius-medium);
+        padding: 12px;
+        margin-bottom: 10px;
+        box-shadow: var(--shadow-elevated);
       }
       
       .command-mapping-header {
@@ -612,54 +678,114 @@ function registerPluginSettings(ctx) {
       
       .command-mapping-header h4 {
         margin: 0;
-        font-size: 1rem;
+        font-size: 0.95rem;
         color: var(--color-text-primary);
+      }
+
+      .mapping-table {
+        width: 100%;
+        border-collapse: separate;
+        border-spacing: 0 10px;
+      }
+
+      .mapping-table th {
+        text-align: left;
+        font-size: 0.75rem;
+        color: var(--color-text-secondary);
+        font-weight: 600;
+        padding: 0 8px 6px;
+      }
+
+      .mapping-table td {
+        background: var(--color-surface);
+        border: 1px solid var(--color-border);
+        padding: 10px;
+        vertical-align: top;
+      }
+
+      .mapping-table tr td:first-child {
+        border-radius: var(--radius-medium) 0 0 var(--radius-medium);
+      }
+
+      .mapping-table tr td:last-child {
+        border-radius: 0 var(--radius-medium) var(--radius-medium) 0;
+      }
+
+      .mapping-input-row {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+      }
+
+      .mapping-input-row input {
+        flex: 1;
+        min-width: 0;
+      }
+
+      .mapping-action {
+        font-weight: 600;
+        color: var(--color-text-primary);
+      }
+
+      .mapping-action.on {
+        color: #2fb36b;
+      }
+
+      .mapping-action.off {
+        color: #e25b62;
       }
       
       .btn {
-        padding: 4px 8px;
-        border: none;
-        border-radius: 4px;
+        padding: 6px 12px;
+        border-radius: var(--radius-small);
+        border: 1px solid var(--color-accent);
+        background: var(--color-accent);
+        color: var(--color-surface);
         cursor: pointer;
-        font-size: 0.75rem;
-        transition: background-color 0.2s;
+        font-size: 0.85rem;
+        font-weight: 600;
+        transition: filter 0.15s ease;
       }
       
       .btn-danger {
-        background: #dc3545;
-        color: white;
+        background: #e25b62 !important;
+        border-color: #e25b62 !important;
+        color: #1b0f12 !important;
       }
       
       .btn-danger:hover {
-        background: #c82333;
+        filter: brightness(0.95);
       }
       
       .btn-primary {
-        background: #007bff;
-        color: white;
+        background: var(--color-accent);
+        border-color: var(--color-accent);
+        color: var(--color-surface);
       }
       
       .btn-primary:hover {
-        background: #0056b3;
+        filter: brightness(0.95);
       }
       
       .btn-success {
-        background: #28a745;
-        color: white;
-        margin-top: 16px;
+        background: var(--color-accent);
+        border-color: var(--color-accent);
+        color: var(--color-surface);
       }
       
       .btn-success:hover {
-        background: #218838;
+        filter: brightness(0.95);
       }
       
       .btn-secondary {
-        background: #6c757d;
-        color: white;
+        background: var(--color-surface-muted);
+        color: var(--color-text-primary);
+        border: 1px solid var(--color-border);
       }
       
       .btn-secondary:hover {
-        background: #5a6268;
+        background: var(--color-surface);
+        filter: none;
       }
       
       .connection-status {
@@ -787,24 +913,33 @@ function registerPluginSettings(ctx) {
       }
       
       .gcode-tag {
-        background: var(--color-primary, #007bff);
-        color: white;
-        padding: 2px 6px;
-        border-radius: 4px;
-        font-size: 0.7rem;
-        display: flex;
+        background: var(--color-surface);
+        color: var(--color-text-primary);
+        padding: 4px 10px;
+        border-radius: 999px;
+        font-size: 0.82rem;
+        display: inline-flex;
         align-items: center;
-        gap: 4px;
+        gap: 8px;
+        border: 1px solid var(--color-border);
+        box-shadow: var(--shadow-elevated);
       }
       
       .gcode-tag button {
-        background: none;
-        border: none;
-        color: white;
+        background: #e25b62 !important;
+        border: 1px solid #e25b62 !important;
+        color: #1b0f12 !important;
         cursor: pointer;
+        width: 20px;
+        height: 20px;
         padding: 0;
-        font-size: 1rem;
+        border-radius: 50%;
+        font-size: 0.9rem;
         line-height: 1;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        border: 1px solid var(--color-border);
       }
       
       .gcode-input-wrapper {
@@ -834,6 +969,24 @@ function registerPluginSettings(ctx) {
         background: rgba(220, 53, 69, 0.2);
         color: #dc3545;
         display: block;
+      }
+
+      .dialog-footer {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        gap: 12px;
+        padding: 16px 8px 8px;
+        border-top: 1px solid var(--color-border);
+        background: var(--color-surface);
+        position: sticky;
+        bottom: 0;
+        z-index: 2;
+      }
+
+      .dialog-footer .btn {
+        margin-top: 0;
+        min-width: 120px;
       }
       
       .connection-status {
@@ -907,8 +1060,6 @@ function registerPluginSettings(ctx) {
           <p class="help-text">Map G-code commands to outlet actions.</p>
           
           <div id="commandMappingsContainer"></div>
-          
-          <button class="btn btn-primary" onclick="addCommandMapping()">+ Add Mapping</button>
         </div>
       </div>
       
@@ -923,7 +1074,10 @@ function registerPluginSettings(ctx) {
         </div>
       </div>
       
-      <button class="btn btn-success" onclick="window.saveAllSettings && window.saveAllSettings()">Save Settings</button>
+      <div class="dialog-footer">
+        <button class="btn btn-secondary" id="closeBtn">Close</button>
+        <button class="btn btn-success" onclick="window.saveAllSettings && window.saveAllSettings()">Save</button>
+      </div>
       
       <div id="saveStatus" class="save-status"></div>
     </div>
@@ -1270,159 +1424,122 @@ function registerPluginSettings(ctx) {
           }
         };
         
-        // Render command mappings
+        function findMappingIndex(deviceName, channelIndex, action) {
+          const mappings = currentSettings.commandMappings || [];
+          return mappings.findIndex(m => m.deviceName === deviceName && m.channelIndex === channelIndex && m.action === action);
+        }
+
+        function getOrCreateMapping(deviceName, channelIndex, channelName, action) {
+          if (!currentSettings.commandMappings) {
+            currentSettings.commandMappings = [];
+          }
+          let mappingIndex = findMappingIndex(deviceName, channelIndex, action);
+          if (mappingIndex === -1) {
+            currentSettings.commandMappings.push({
+              deviceName: deviceName,
+              channelIndex: channelIndex,
+              channelName: channelName,
+              action: action,
+              gcodes: []
+            });
+            mappingIndex = currentSettings.commandMappings.length - 1;
+          }
+          return mappingIndex;
+        }
+
+        // Render command mappings (table view)
         function renderCommandMappings() {
           const container = document.getElementById('commandMappingsContainer');
-          const mappings = currentSettings.commandMappings || [];
           const devices = currentSettings.discoveredDevices || [];
           
           if (devices.length === 0) {
             container.innerHTML = '<p style="color: var(--color-text-secondary);">Please discover devices first</p>';
             return;
           }
-          
-          container.innerHTML = mappings.map((mapping, index) => {
-            // Build device options
-            const deviceOptions = devices.map(dev =>
-              '<option value="' + dev.devName + '" ' + (mapping.deviceName === dev.devName ? 'selected' : '') + '>' + dev.devName + '</option>'
-            ).join('');
-            
-            // Build channel options for selected device
-            const selectedDevice = devices.find(d => d.devName === mapping.deviceName) || devices[0];
-            const channelOptions = selectedDevice.channels
-              .map((ch, chIndex) => {
-                if (chIndex === 0) return ''; // Skip master channel
-                const channelName = ch.devName || 'Outlet ' + chIndex;
-                return '<option value="' + chIndex + '" ' + (mapping.channelIndex === chIndex ? 'selected' : '') + '>' + channelName + '</option>';
-              })
-              .filter(Boolean)
-              .join('');
 
-            const gcodeTags = (mapping.gcodes || []).map((gcode, gcodeIndex) =>
-              '<div class="gcode-tag">' +
-                '<span>' + gcode + '</span>' +
-                '<button onclick="removeGcode(' + index + ', ' + gcodeIndex + ')">×</button>' +
-              '</div>'
-            ).join('');
+          let rowIndex = 0;
+          const rowsHtml = [];
 
-            return '' +
-              '<div class="command-mapping" data-index="' + index + '">' +
-                '<div class="command-mapping-header">' +
-                  '<h4>Mapping #' + (index + 1) + '</h4>' +
-                  '<button class="btn btn-danger" onclick="removeCommandMapping(' + index + ')">Remove</button>' +
-                '</div>' +
-                '<div class="inline-group">' +
-                  '<div class="form-group">' +
-                    '<label>Device:</label>' +
-                    '<select onchange="updateMappingDevice(' + index + ', this.value)">' +
-                      deviceOptions +
-                    '</select>' +
-                  '</div>' +
-                  '<div class="form-group">' +
-                    '<label>Channel:</label>' +
-                    '<select id="channel-select-' + index + '" onchange="updateMappingChannel(' + index + ', parseInt(this.value))">' +
-                      channelOptions +
-                    '</select>' +
-                  '</div>' +
-                  '<div class="form-group">' +
-                    '<label>Action:</label>' +
-                    '<select onchange="updateMapping(' + index + ', \\\'action\\\', this.value)">' +
-                      '<option value="on" ' + (mapping.action === 'on' ? 'selected' : '') + '>Turn ON</option>' +
-                      '<option value="off" ' + (mapping.action === 'off' ? 'selected' : '') + '>Turn OFF</option>' +
-                    '</select>' +
-                  '</div>' +
-                '</div>' +
-                '<div class="form-group" style="margin-top: 12px;">' +
-                  '<label>G-Codes:</label>' +
-                  '<div class="gcode-input-wrapper">' +
-                    '<input type="text" id="gcode-input-' + index + '" placeholder="e.g., M8 or M65 P0">' +
-                    '<button class="btn btn-primary" onclick="addGcode(' + index + ')">Add</button>' +
-                  '</div>' +
-                '</div>' +
-                '<div class="gcode-tags">' +
-                  gcodeTags +
-                '</div>' +
-              '</div>';
-          }).join('');
+          devices.forEach(device => {
+            const deviceName = device.devName;
+            const deviceNameEsc = String(deviceName || '').replace(/'/g, "\\'");
+            const channels = device.channels || [];
+
+            channels.forEach((channel, chIndex) => {
+              if (chIndex === 0) return;
+              const channelName = channel.devName || ('Outlet ' + chIndex);
+              const channelNameEsc = String(channelName || '').replace(/'/g, "\\'");
+
+              ['on', 'off'].forEach(action => {
+                const mappingIndex = findMappingIndex(deviceName, chIndex, action);
+                const mapping = mappingIndex >= 0 ? currentSettings.commandMappings[mappingIndex] : null;
+                const gcodeTags = (mapping && mapping.gcodes ? mapping.gcodes : []).map((gcode, gcodeIndex) =>
+                  '<div class="gcode-tag">' +
+                    '<span>' + gcode + '</span>' +
+                    '<button onclick="removeGcodeRow(\\'' + deviceNameEsc + '\\', ' + chIndex + ', \\'' + action + '\\', ' + gcodeIndex + ')">×</button>' +
+                  '</div>'
+                ).join('');
+
+                const rowId = 'gcode-input-row-' + rowIndex;
+                const actionLabel = action === 'on' ? 'Turn ON' : 'Turn OFF';
+
+                rowsHtml.push(
+                  '<tr>' +
+                    '<td>' + deviceName + '</td>' +
+                    '<td>' + channelName + '</td>' +
+                    '<td><span class="mapping-action ' + action + '">' + actionLabel + '</span></td>' +
+                    '<td>' +
+                      '<div class="mapping-input-row">' +
+                        '<input type="text" id="' + rowId + '" placeholder="e.g., M8 or M65 P0">' +
+                        '<button class="btn btn-primary" onclick="addGcodeRow(\\'' + deviceNameEsc + '\\', ' + chIndex + ', \\'' + action + '\\', \\'' + channelNameEsc + '\\', \\'' + rowId + '\\')">Add</button>' +
+                      '</div>' +
+                      '<div class="gcode-tags">' + gcodeTags + '</div>' +
+                    '</td>' +
+                  '</tr>'
+                );
+
+                rowIndex++;
+              });
+            });
+          });
+
+          container.innerHTML =
+            '<table class="mapping-table">' +
+              '<thead>' +
+                '<tr>' +
+                  '<th>Device</th>' +
+                  '<th>Outlet</th>' +
+                  '<th>Action</th>' +
+                  '<th>Mapping</th>' +
+                '</tr>' +
+              '</thead>' +
+              '<tbody>' + rowsHtml.join('') + '</tbody>' +
+            '</table>';
         }
         
-        // Add G-code to mapping
-        window.addGcode = function(mappingIndex) {
-          const input = document.getElementById('gcode-input-' + mappingIndex);
+        window.addGcodeRow = function(deviceName, channelIndex, action, channelName, inputId) {
+          const input = document.getElementById(inputId);
+          if (!input) return;
           const gcode = input.value.trim().toUpperCase();
-          
-          if (gcode && !currentSettings.commandMappings[mappingIndex].gcodes.includes(gcode)) {
-            currentSettings.commandMappings[mappingIndex].gcodes.push(gcode);
-            input.value = '';
-            renderCommandMappings();
+          if (!gcode) return;
+
+          const mappingIndex = getOrCreateMapping(deviceName, channelIndex, channelName, action);
+          const mapping = currentSettings.commandMappings[mappingIndex];
+          if (!mapping.gcodes.includes(gcode)) {
+            mapping.gcodes.push(gcode);
           }
-        };
-        
-        // Remove G-code from mapping
-        window.removeGcode = function(mappingIndex, gcodeIndex) {
-          currentSettings.commandMappings[mappingIndex].gcodes.splice(gcodeIndex, 1);
+          input.value = '';
           renderCommandMappings();
         };
         
-        // Update mapping device
-        window.updateMappingDevice = function(index, deviceName) {
-          currentSettings.commandMappings[index].deviceName = deviceName;
-          
-          // Reset channel to first available
-          const device = currentSettings.discoveredDevices.find(d => d.devName === deviceName);
-          if (device && device.channels.length > 1) {
-            currentSettings.commandMappings[index].channelIndex = 1;
-            currentSettings.commandMappings[index].channelName = device.channels[1].devName || 'Outlet 1';
+        window.removeGcodeRow = function(deviceName, channelIndex, action, gcodeIndex) {
+          const mappingIndex = findMappingIndex(deviceName, channelIndex, action);
+          if (mappingIndex === -1) return;
+          const mapping = currentSettings.commandMappings[mappingIndex];
+          mapping.gcodes.splice(gcodeIndex, 1);
+          if (mapping.gcodes.length === 0) {
+            currentSettings.commandMappings.splice(mappingIndex, 1);
           }
-          
-          renderCommandMappings();
-        };
-        
-        // Update mapping channel
-        window.updateMappingChannel = function(index, channelIndex) {
-          const mapping = currentSettings.commandMappings[index];
-          const device = currentSettings.discoveredDevices.find(d => d.devName === mapping.deviceName);
-          
-          if (device) {
-            mapping.channelIndex = channelIndex;
-            mapping.channelName = device.channels[channelIndex].devName || 'Outlet ' + channelIndex;
-          }
-        };
-        
-        // Update mapping field
-        window.updateMapping = function(index, field, value) {
-          currentSettings.commandMappings[index][field] = value;
-        };
-        
-        // Add new command mapping
-        window.addCommandMapping = function() {
-          if (!currentSettings.commandMappings) {
-            currentSettings.commandMappings = [];
-          }
-          
-          const devices = currentSettings.discoveredDevices || [];
-          if (devices.length === 0) {
-            alert('Please discover devices first');
-            return;
-          }
-          
-          // Default to first device, first channel
-          const firstDevice = devices[0];
-          const firstChannel = firstDevice.channels[1]; // Skip master at index 0
-          
-          currentSettings.commandMappings.push({
-            deviceName: firstDevice.devName,
-            channelIndex: 1,
-            channelName: (firstChannel && firstChannel.devName) ? firstChannel.devName : 'Outlet 1',
-            action: 'on',
-            gcodes: []
-          });
-          renderCommandMappings();
-        };
-        
-        // Remove command mapping
-        window.removeCommandMapping = function(index) {
-          currentSettings.commandMappings.splice(index, 1);
           renderCommandMappings();
         };
         
@@ -1458,6 +1575,10 @@ function registerPluginSettings(ctx) {
           });
         };
         
+        document.getElementById('closeBtn').addEventListener('click', () => {
+          window.parent.postMessage({ type: 'close-plugin-dialog' }, '*');
+        });
+
         // Initialize
         initTabs();
         loadSettings();
@@ -1470,11 +1591,6 @@ function registerPluginSettings(ctx) {
       })();
     </script>
   `;
-  
-  ctx.registerConfigUI(html);
-  
-  // Register test outlet API endpoint
-  ctx.registerAPIEndpoint = ctx.registerAPIEndpoint || function() {};
 }
 
 /**

@@ -82,7 +82,7 @@ ncsender-plugin-meross-smart-outlet/
 ├── REPOSITORY_SETUP.md          # This file
 ├── index.js                     # Plugin implementation
 ├── latest_release.md            # Release notes for next version
-├── logo.png         # Logo placeholder (add real logo.png)
+├── logo.png                     # Plugin logo
 └── manifest.json                # Plugin metadata
 ```
 

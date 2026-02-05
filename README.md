@@ -48,14 +48,10 @@ The plugin will appear in **Plugins → Meross Smart Outlet Controller**.
 
 ## 📖 Quick Start
 
-1. Open **Plugins → Meross Smart Outlet Controller**
+1. Open **Plugins → Meross Smart Outlet Controller** (tool menu)
 2. Enter your Meross email and password
 3. Click **Discover Devices**
-4. Add command mappings:
-   - Choose a device
-   - Choose a channel (outlet)
-   - Choose ON/OFF action
-   - Add one or more G-codes
+4. In **Mappings**, add G-codes in the row matching your device/outlet/action
 5. Click **Save Settings**
 6. Use the **Testing** tab to verify outlets
 
@@ -64,7 +60,7 @@ The plugin will appear in **Plugins → Meross Smart Outlet Controller**.
 - **Meross Email / Password**: Your Meross account credentials
 - **Discover Devices**: Fetches device and outlet names
 - **Min Signal Duration**: Debounce time before sending outlet commands
-- **Command Mappings**: G-code → device/channel/action rules
+- **Command Mappings**: Table of device/outlet/action rows with G-code lists
 
 ## 📊 Technical Details
 
