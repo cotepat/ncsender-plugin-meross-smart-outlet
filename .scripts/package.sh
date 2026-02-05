@@ -1,53 +1,43 @@
 #!/bin/bash
 
-# Package plugin into a ZIP file for distribution
+# Package the plugin for distribution
+# Creates a zip file ready for installation in ncSender
 
-PLUGIN_ID="com.ncsender.meross-smart-outlet"
-PLUGIN_DIR="$(cd "$(dirname "$0")/.." && pwd)"
-BUILD_DIR="$PLUGIN_DIR/build"
-STAGING_DIR="$BUILD_DIR/$PLUGIN_ID"
-ZIP_FILE="$BUILD_DIR/$PLUGIN_ID.zip"
+set -e
 
-echo "Building plugin: $PLUGIN_ID"
-echo "Plugin directory: $PLUGIN_DIR"
+PLUGIN_ID=$(node -p "require('./manifest.json').id")
+VERSION=$(node -p "require('./manifest.json').version")
+PACKAGE_NAME="${PLUGIN_ID}-v${VERSION}.zip"
 
-# Create build directory
-mkdir -p "$BUILD_DIR"
+echo "Packaging ${PLUGIN_ID} v${VERSION}..."
 
-# Remove old staging and ZIP if exist
-rm -rf "$STAGING_DIR"
-if [ -f "$ZIP_FILE" ]; then
-  rm "$ZIP_FILE"
-  echo "Removed old build: $ZIP_FILE"
+# Create temporary directory
+TEMP_DIR=$(mktemp -d)
+PLUGIN_DIR="${TEMP_DIR}/${PLUGIN_ID}"
+mkdir -p "${PLUGIN_DIR}"
+
+# Copy plugin files
+cp manifest.json "${PLUGIN_DIR}/"
+cp index.js "${PLUGIN_DIR}/"
+cp meross-cloud-manager.js "${PLUGIN_DIR}/"
+cp simple-mqtt-client.js "${PLUGIN_DIR}/"
+
+# Include logo if it exists
+if [ -f "logo.png" ]; then
+  cp logo.png "${PLUGIN_DIR}/"
+elif [ -f "logo.png.placeholder" ]; then
+  cp logo.png.placeholder "${PLUGIN_DIR}/"
 fi
 
-# Create staging directory with plugin structure
-mkdir -p "$STAGING_DIR"
+# Create zip file
+cd "${TEMP_DIR}"
+zip -r "${PACKAGE_NAME}" "${PLUGIN_ID}/"
+cd -
 
-# Copy plugin files to staging directory
-cp "$PLUGIN_DIR/manifest.json" "$STAGING_DIR/"
-cp "$PLUGIN_DIR/index.js" "$STAGING_DIR/"
-cp "$PLUGIN_DIR/meross-cloud-manager.js" "$STAGING_DIR/"
-cp "$PLUGIN_DIR/simple-mqtt-client.js" "$STAGING_DIR/"
-cp "$PLUGIN_DIR/package.json" "$STAGING_DIR/"
-cp "$PLUGIN_DIR/README.md" "$STAGING_DIR/"
-cp "$PLUGIN_DIR/LICENSE" "$STAGING_DIR/"
+# Move zip to current directory
+mv "${TEMP_DIR}/${PACKAGE_NAME}" .
 
-echo "Files copied to staging directory"
+# Cleanup
+rm -rf "${TEMP_DIR}"
 
-# Create ZIP from build directory (this creates the plugin folder inside the ZIP)
-cd "$BUILD_DIR"
-zip -r "$PLUGIN_ID.zip" "$PLUGIN_ID/"
-
-# Clean up staging directory
-rm -rf "$STAGING_DIR"
-
-echo "✓ Plugin packaged: $ZIP_FILE"
-echo ""
-echo "ZIP structure:"
-unzip -l "$ZIP_FILE" | head -15
-echo ""
-echo "To install:"
-echo "  1. Open ncSender"
-echo "  2. Go to Settings → Plugins → Install from ZIP"
-echo "  3. Select build/$PLUGIN_ID.zip"
+echo "Package created: ${PACKAGE_NAME}"

@@ -1,62 +1,46 @@
-name: Release Plugin
+name: Release
 
 on:
   push:
     tags:
       - 'v*'
 
+permissions:
+  contents: write
+
 jobs:
-  build:
+  release:
     runs-on: ubuntu-latest
-    
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v3
-      
-      - name: Setup Node.js
-        uses: actions/setup-node@v3
-        with:
-          node-version: '18'
-      
-      - name: Install dependencies
-        run: npm install
-      
-      - name: Create build directory
-        run: mkdir -p build
-      
-      - name: Package plugin
-        run: |
-          PLUGIN_ID="com.ncsender.meross-smart-outlet"
-          mkdir -p "build/$PLUGIN_ID"
-          cp manifest.json "build/$PLUGIN_ID/"
-          cp index.js "build/$PLUGIN_ID/"
-          cp meross-cloud-manager.js "build/$PLUGIN_ID/"
-          cp package.json "build/$PLUGIN_ID/"
-          cp README.md "build/$PLUGIN_ID/"
-          cp QUICKSTART.md "build/$PLUGIN_ID/"
-          cp CHANGELOG.md "build/$PLUGIN_ID/"
-          cp LICENSE "build/$PLUGIN_ID/"
-          cp config.example.json "build/$PLUGIN_ID/"
-          cd build
-          zip -r "$PLUGIN_ID.zip" "$PLUGIN_ID/"
-      
-      - name: Extract version from manifest
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Get version from manifest
         id: get_version
         run: |
-          VERSION=$(node -p "require('./manifest.json').version")
-          echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
-      
-      - name: Extract changelog entry
-        id: changelog
+          VERSION=$(node --input-type=module -e "import manifest from './manifest.json' assert { type: 'json' }; console.log(manifest.version)")
+          echo "version=${VERSION}" >> $GITHUB_OUTPUT
+          echo "Version: ${VERSION}"
+
+      - name: Create plugin package
         run: |
-          VERSION=${{ steps.get_version.outputs.VERSION }}
-          sed -n "/## \[$VERSION\]/,/## \[/p" CHANGELOG.md | sed '$d' > release_notes.md
-      
+          chmod +x .scripts/package.sh
+          .scripts/package.sh
+
+      - name: Extract release notes
+        id: extract_notes
+        run: |
+          chmod +x .scripts/extract-release-notes.sh
+          .scripts/extract-release-notes.sh > release_notes.md
+          cat release_notes.md
+
       - name: Create Release
         uses: softprops/action-gh-release@v1
         with:
-          files: build/com.ncsender.meross-smart-outlet.zip
+          name: Meross Smart Outlet Controller v${{ steps.get_version.outputs.version }}
           body_path: release_notes.md
+          files: |
+            *.zip
           draft: false
           prerelease: false
         env:

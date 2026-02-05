@@ -32,6 +32,11 @@ class MerossCloudManager {
   static loginTtlMs = 6 * 60 * 60 * 1000; // 6 hours
   static loginBlockedUntil = 0;
 
+  static clearSharedAuth() {
+    MerossCloudManager.sharedAuth = null;
+    MerossCloudManager.loginPromise = null;
+  }
+
   /**
    * Throttle Meross HTTP requests to avoid rate limits
    * Conservative default: 1 request per 10 seconds
@@ -127,8 +132,9 @@ class MerossCloudManager {
         this.ctx.log(`  Payload: ${postData.substring(0, 150)}...`);
       }
       
+      const baseHost = this.baseUrl ? new URL(this.baseUrl).hostname : 'iotx-us.meross.com';
       const options = {
-        hostname: 'iotx-us.meross.com',
+        hostname: baseHost,
         port: 443,
         path: endpoint,
         method: 'POST',
@@ -196,18 +202,19 @@ class MerossCloudManager {
   /**
    * Login to Meross cloud
    */
-  async _login(email, password) {
+  async _login(email, password, options = {}) {
     this.ctx.log('Logging in to Meross cloud...');
     this.ctx.log(`Attempting login for: ${email}`);
     
     try {
+      const forceLogin = options && options.force === true;
       if (MerossCloudManager.loginBlockedUntil && Date.now() < MerossCloudManager.loginBlockedUntil) {
         const waitSeconds = Math.max(0, Math.round((MerossCloudManager.loginBlockedUntil - Date.now()) / 1000));
         throw new Error(`Login temporarily blocked due to rate limit. Try again in ${waitSeconds}s.`);
       }
 
       const now = Date.now();
-      if (MerossCloudManager.sharedAuth && (now - MerossCloudManager.sharedAuth.lastLoginAt) < MerossCloudManager.loginTtlMs) {
+      if (!forceLogin && MerossCloudManager.sharedAuth && (now - MerossCloudManager.sharedAuth.lastLoginAt) < MerossCloudManager.loginTtlMs) {
         const cached = MerossCloudManager.sharedAuth;
         this.token = cached.token;
         this.key = cached.key;
@@ -218,7 +225,7 @@ class MerossCloudManager {
         return true;
       }
 
-      if (MerossCloudManager.loginPromise) {
+      if (!forceLogin && MerossCloudManager.loginPromise) {
         await MerossCloudManager.loginPromise;
         const cached = MerossCloudManager.sharedAuth;
         if (cached) {
@@ -397,7 +404,19 @@ class MerossCloudManager {
       await this._login(email, password);
       
       // Get devices
-      const devices = await this._getDevices();
+      let devices;
+      try {
+        devices = await this._getDevices();
+      } catch (error) {
+        if (error && error.message && error.message.includes('1022')) {
+          this.ctx.log('Meross token rejected (1022). Clearing cached auth and re-login...');
+          MerossCloudManager.clearSharedAuth();
+          await this._login(email, password, { force: true });
+          devices = await this._getDevices();
+        } else {
+          throw error;
+        }
+      }
       this.ctx.log(`Found ${devices.length} Meross devices`);
       
       // Log each device with details

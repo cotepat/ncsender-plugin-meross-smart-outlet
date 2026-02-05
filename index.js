@@ -404,7 +404,7 @@ function registerPluginSettings(ctx) {
     <style>
       .plugin-settings {
         font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
-        padding: 12px;
+        padding: 8px;
         color: var(--color-text-primary, #e0e0e0);
         max-height: 80vh;
         overflow-y: auto;
@@ -414,14 +414,14 @@ function registerPluginSettings(ctx) {
         display: flex;
         gap: 4px;
         border-bottom: 1px solid var(--color-border, #333);
-        margin-bottom: 12px;
+        margin-bottom: 8px;
       }
       
       .ms-tab {
         all: unset;
         cursor: pointer;
-        padding: 6px 10px;
-        font-size: 0.85rem;
+        padding: 4px 8px;
+        font-size: 0.78rem;
         color: var(--color-text-secondary);
         border-radius: 4px 4px 0 0;
       }
@@ -448,22 +448,22 @@ function registerPluginSettings(ctx) {
       }
       
       .settings-section {
-        margin-bottom: 12px;
+        margin-bottom: 8px;
         border: 1px solid var(--color-border, #333);
         border-radius: 6px;
-        padding: 12px;
+        padding: 10px;
         background: var(--color-surface-muted, #1a1a1a);
       }
       
       .settings-section h3 {
         margin-top: 0;
-        margin-bottom: 10px;
+        margin-bottom: 6px;
         color: var(--color-text-primary);
-        font-size: 0.95rem;
+        font-size: 0.9rem;
       }
       
       .form-group {
-        margin-bottom: 12px;
+        margin-bottom: 8px;
       }
       
       .form-group label {
@@ -476,12 +476,12 @@ function registerPluginSettings(ctx) {
       .form-group input,
       .form-group select {
         width: 100%;
-        padding: 6px 8px;
+        padding: 5px 8px;
         background: var(--color-surface, #2a2a2a);
         border: 1px solid var(--color-border, #333);
         border-radius: 4px;
         color: var(--color-text-primary);
-        font-size: 0.85rem;
+        font-size: 0.8rem;
       }
       
       .form-group input:focus,
@@ -491,26 +491,61 @@ function registerPluginSettings(ctx) {
       }
       
       .help-text {
-        font-size: 0.8rem;
+        font-size: 0.75rem;
         color: var(--color-text-secondary);
-        margin-top: 4px;
-        line-height: 1.35;
+        margin-top: 2px;
+        line-height: 1.3;
       }
       
       .outlet-test-section {
         display: flex;
-        gap: 8px;
-        margin-top: 12px;
+        gap: 6px;
       }
       
       .outlet-test-btn {
-        flex: 1;
-        padding: 6px 10px;
+        padding: 4px 8px;
         border: 1px solid var(--color-border, #333);
         border-radius: 4px;
         cursor: pointer;
-        font-size: 0.8rem;
+        font-size: 0.75rem;
         transition: all 0.2s;
+      }
+
+      .outlet-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+        gap: 8px;
+      }
+
+      .outlet-card {
+        border: 1px solid var(--color-border, #333);
+        background: var(--color-surface, #2a2a2a);
+        border-radius: 6px;
+        padding: 8px;
+        display: grid;
+        gap: 6px;
+      }
+
+      .outlet-card-device {
+        font-size: 0.75rem;
+        color: var(--color-text-secondary);
+        text-transform: uppercase;
+        letter-spacing: 0.02em;
+      }
+
+      .outlet-card-name {
+        font-size: 0.85rem;
+        font-weight: 600;
+        color: var(--color-text-primary);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+
+      .outlet-card-buttons {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 6px;
       }
       
       .outlet-test-btn.on {
@@ -564,15 +599,15 @@ function registerPluginSettings(ctx) {
         background: var(--color-surface, #2a2a2a);
         border: 1px solid var(--color-border, #444);
         border-radius: 6px;
-        padding: 12px;
-        margin-bottom: 12px;
+        padding: 10px;
+        margin-bottom: 8px;
       }
       
       .command-mapping-header {
         display: flex;
         justify-content: space-between;
         align-items: center;
-        margin-bottom: 12px;
+        margin-bottom: 8px;
       }
       
       .command-mapping-header h4 {
@@ -582,11 +617,11 @@ function registerPluginSettings(ctx) {
       }
       
       .btn {
-        padding: 6px 10px;
+        padding: 4px 8px;
         border: none;
         border-radius: 4px;
         cursor: pointer;
-        font-size: 0.8rem;
+        font-size: 0.75rem;
         transition: background-color 0.2s;
       }
       
@@ -705,20 +740,21 @@ function registerPluginSettings(ctx) {
         background: var(--color-surface, #2a2a2a);
         border: 1px solid var(--color-border, #444);
         border-radius: 6px;
-        padding: 12px;
-        margin-bottom: 12px;
+        padding: 8px;
+        margin-bottom: 8px;
       }
       
       .device-header {
         font-weight: 600;
         color: var(--color-text-primary);
-        margin-bottom: 8px;
+        margin-bottom: 6px;
+        font-size: 0.85rem;
       }
       
       .device-type {
         color: var(--color-text-secondary);
-        font-size: 0.85rem;
-        margin-bottom: 8px;
+        font-size: 0.75rem;
+        margin-bottom: 6px;
       }
       
       .channel-list {
@@ -726,9 +762,9 @@ function registerPluginSettings(ctx) {
       }
       
       .channel-item {
-        padding: 6px 0;
+        padding: 4px 0;
         color: var(--color-text-secondary);
-        font-size: 0.9rem;
+        font-size: 0.8rem;
       }
       
       .channel-name {
@@ -738,27 +774,27 @@ function registerPluginSettings(ctx) {
       
       .inline-group {
         display: grid;
-        grid-template-columns: 1fr 1fr 2fr;
-        gap: 8px;
+        grid-template-columns: 1fr 1fr 1.2fr;
+        gap: 6px;
         align-items: end;
       }
       
       .gcode-tags {
         display: flex;
         flex-wrap: wrap;
-        gap: 6px;
-        margin-top: 6px;
+        gap: 4px;
+        margin-top: 4px;
       }
       
       .gcode-tag {
         background: var(--color-primary, #007bff);
         color: white;
-        padding: 4px 8px;
+        padding: 2px 6px;
         border-radius: 4px;
-        font-size: 0.8rem;
+        font-size: 0.7rem;
         display: flex;
         align-items: center;
-        gap: 6px;
+        gap: 4px;
       }
       
       .gcode-tag button {
@@ -970,49 +1006,44 @@ function registerPluginSettings(ctx) {
           }
           
           container.innerHTML = '';
+          container.className = 'outlet-grid';
           
           devices.forEach(device => {
-            // Device header
-            const deviceHeader = document.createElement('div');
-            deviceHeader.style.fontWeight = '600';
-            deviceHeader.style.marginBottom = '8px';
-            deviceHeader.style.marginTop = '16px';
-            deviceHeader.textContent = device.devName;
-            container.appendChild(deviceHeader);
-            
-            // Channel buttons (skip master channel at index 0)
+            // Channel cards (skip master channel at index 0)
             device.channels.forEach((channel, chIndex) => {
               if (chIndex === 0) return; // Skip master
               
-              const div = document.createElement('div');
-              div.style.marginBottom = '12px';
-              div.style.marginLeft = '16px';
+              const card = document.createElement('div');
+              card.className = 'outlet-card';
               
-              const label = document.createElement('label');
-              label.style.display = 'block';
-              label.style.marginBottom = '6px';
-              label.style.fontWeight = '500';
-              label.textContent = (channel.devName || 'Outlet ' + chIndex) + ':';
+              const deviceLabel = document.createElement('div');
+              deviceLabel.className = 'outlet-card-device';
+              deviceLabel.textContent = device.devName;
               
-              const btnContainer = document.createElement('div');
-              btnContainer.className = 'outlet-test-section';
+              const nameLabel = document.createElement('div');
+              nameLabel.className = 'outlet-card-name';
+              nameLabel.textContent = channel.devName || ('Outlet ' + chIndex);
+              
+              const buttons = document.createElement('div');
+              buttons.className = 'outlet-card-buttons';
               
               const btnOn = document.createElement('button');
               btnOn.className = 'outlet-test-btn on';
-              btnOn.textContent = 'Turn ON';
+              btnOn.textContent = 'ON';
               btnOn.addEventListener('click', () => testOutletButton(device.devName, chIndex, true));
               
               const btnOff = document.createElement('button');
               btnOff.className = 'outlet-test-btn off';
-              btnOff.textContent = 'Turn OFF';
+              btnOff.textContent = 'OFF';
               btnOff.addEventListener('click', () => testOutletButton(device.devName, chIndex, false));
               
-              btnContainer.appendChild(btnOn);
-              btnContainer.appendChild(btnOff);
+              buttons.appendChild(btnOn);
+              buttons.appendChild(btnOff);
               
-              div.appendChild(label);
-              div.appendChild(btnContainer);
-              container.appendChild(div);
+              card.appendChild(deviceLabel);
+              card.appendChild(nameLabel);
+              card.appendChild(buttons);
+              container.appendChild(card);
             });
           });
         }
