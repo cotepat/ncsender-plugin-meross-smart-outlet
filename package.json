@@ -1,0 +1,26 @@
+{
+  "name": "ncsender-plugin-meross-smart-outlet",
+  "version": "1.0.0",
+  "description": "Control Meross smart plug outlets via G-code commands in ncSender",
+  "main": "index.js",
+  "type": "module",
+  "scripts": {
+    "build": "node .scripts/package.sh",
+    "install-plugin": "node .scripts/install.sh"
+  },
+  "keywords": [
+    "ncsender",
+    "plugin",
+    "meross",
+    "smart-outlet",
+    "gcode",
+    "cnc"
+  ],
+  "author": "ncSender",
+  "license": "MIT",
+  "dependencies": {},
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/cotepat/ncsender-plugin-meross-smart-outlet"
+  }
+}

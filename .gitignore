@@ -1,0 +1,11 @@
+node_modules/
+*.zip
+.DS_Store
+config.json
+npm-debug.log
+yarn-error.log
+*.log
+.env
+.vscode/
+.idea/
+python_example.py
