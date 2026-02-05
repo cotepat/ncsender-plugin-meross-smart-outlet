@@ -1376,7 +1376,6 @@ function getConfigUiHtml() {
         
         // Test outlet function for UI buttons
         window.testOutletButton = async function(deviceName, channelIndex, turnOn) {
-          console.log('testOutletButton called:', deviceName, channelIndex, turnOn);
           const testStatus = document.getElementById('testStatus');
           
           // Disable all test buttons
@@ -1391,15 +1390,11 @@ function getConfigUiHtml() {
             // Format: $$TEST_Device_Name_1_ON$$ (spaces in device name replaced with underscores)
             const deviceNameFormatted = deviceName.replace(/\s/g, '_');
             const testCommand = '$$TEST_' + deviceNameFormatted + '_' + channelIndex + '_' + (turnOn ? 'ON' : 'OFF') + '$$';
-            console.log('Sending command:', testCommand);
-            
             const response = await fetch('/api/send-command', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({ command: testCommand })
             });
-            
-            console.log('Response status:', response.status);
             
             if (!response.ok) {
               throw new Error('Failed to send test command');

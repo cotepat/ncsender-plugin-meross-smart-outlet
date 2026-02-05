@@ -2,7 +2,7 @@
 
 A ncSender plugin that controls Meross smart outlets using configurable G-code mappings.
 
-![Plugin Banner](docs/screenshots/banner.png)
+<img src="docs/screenshots/banner.png" alt="Plugin banner" width="700" />
 
 ## 🎯 Overview
 
@@ -20,21 +20,21 @@ This plugin lets you:
 - **Account-based discovery**: Lists devices and outlet names from your Meross account
 - **Multi-channel aware**: Supports multi-outlet devices with named channels
 
-![Connection](docs/screenshots/connection.png)
+<img src="docs/screenshots/connection.png" alt="Connection settings" width="520" />
 *Connection settings and discovery*
 
 ### Command Mappings
 - **Flexible mappings**: Map multiple G-codes to specific device channels
 - **Multiple commands per outlet**: Trigger one outlet from several G-code patterns
 
-![Mappings](docs/screenshots/mappings.png)
+<img src="docs/screenshots/mappings.png" alt="Mappings table" width="520" />
 *Mappings configuration*
 
 ### Testing
 - **UI testing tools**: Toggle outlets directly from the Testing tab
 - **Quick verification**: Validate wiring without running a job
 
-![Testing](docs/screenshots/testing.png)
+<img src="docs/screenshots/testing.png" alt="Testing tab" width="520" />
 *Outlet testing cards*
 
 ## 🚀 Installation
