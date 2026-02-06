@@ -417,6 +417,41 @@ function registerCommandHandler(ctx) {
       return line;
     }
   });
+
+  ctx.registerEventHandler('onAfterJobEnd', async (context) => {
+    try {
+      const settings = await loadSettingsFromAPI(ctx);
+      const mappings = settings.commandMappings || [];
+      const jobEndMappings = mappings.filter(mapping => mapping.triggerOnJobEnd);
+      for (const mapping of jobEndMappings) {
+        const channelName = mapping.channelName || `Channel ${mapping.channelIndex}`;
+        ctx.log(`Job end trigger: ${mapping.deviceName} / ${channelName} ${mapping.action}`);
+
+        const hasConnectedManagers = Object.values(merossManagers).some(m => m.isConnected());
+        if (!hasConnectedManagers) {
+          await initializeMerossConnection(ctx);
+        }
+
+        const manager = merossManagers[mapping.deviceName];
+        if (!manager || !manager.isConnected()) {
+          ctx.log(`Device ${mapping.deviceName} not connected`);
+          continue;
+        }
+
+        await new Promise(resolve => setTimeout(resolve, settings.minSignalDuration));
+
+        if (mapping.action === 'on') {
+          await manager.turnOn(mapping.channelIndex);
+          ctx.log(`${mapping.deviceName} / ${channelName} turned ON`);
+        } else if (mapping.action === 'off') {
+          await manager.turnOff(mapping.channelIndex);
+          ctx.log(`${mapping.deviceName} / ${channelName} turned OFF`);
+        }
+      }
+    } catch (error) {
+      ctx.log('Error in job end handler:', error.message);
+    }
+  });
 }
 
 /**
@@ -713,6 +748,26 @@ function getConfigUiHtml() {
         color: var(--color-text-secondary);
         font-weight: 600;
         padding: 0 8px 6px;
+      }
+
+      .mapping-table th.job-end,
+      .mapping-table td.job-end {
+        width: 110px;
+        text-align: center;
+      }
+
+      .job-end-toggle {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+        font-size: 0.75rem;
+        color: var(--color-text-secondary);
+      }
+
+      .job-end-toggle input {
+        width: 16px;
+        height: 16px;
       }
 
       .mapping-table td {
@@ -1454,7 +1509,8 @@ function getConfigUiHtml() {
               channelIndex: channelIndex,
               channelName: channelName,
               action: action,
-              gcodes: []
+              gcodes: [],
+              triggerOnJobEnd: false
             });
             mappingIndex = currentSettings.commandMappings.length - 1;
           }
@@ -1496,12 +1552,19 @@ function getConfigUiHtml() {
 
                 const rowId = 'gcode-input-row-' + rowIndex;
                 const actionLabel = action === 'on' ? 'Turn ON' : 'Turn OFF';
+                const isJobEnd = mapping && mapping.triggerOnJobEnd;
 
                 rowsHtml.push(
                   '<tr>' +
                     '<td>' + deviceName + '</td>' +
                     '<td>' + channelName + '</td>' +
                     '<td><span class="mapping-action ' + action + '">' + actionLabel + '</span></td>' +
+                    '<td class="job-end">' +
+                      '<label class="job-end-toggle">' +
+                        '<input type="checkbox" ' + (isJobEnd ? 'checked' : '') +
+                          ' onchange="toggleJobEnd(\\'' + deviceNameEsc + '\\', ' + chIndex + ', \\'' + action + '\\', \\'' + channelNameEsc + '\\', this.checked)">' +
+                      '</label>' +
+                    '</td>' +
                     '<td>' +
                       '<div class="mapping-input-row">' +
                         '<input type="text" id="' + rowId + '" placeholder="e.g., M8 or M65 P0">' +
@@ -1524,6 +1587,7 @@ function getConfigUiHtml() {
                   '<th>Device</th>' +
                   '<th>Outlet</th>' +
                   '<th>Action</th>' +
+                  '<th class="job-end">On Job End</th>' +
                   '<th>Mapping</th>' +
                 '</tr>' +
               '</thead>' +
@@ -1551,7 +1615,16 @@ function getConfigUiHtml() {
           if (mappingIndex === -1) return;
           const mapping = currentSettings.commandMappings[mappingIndex];
           mapping.gcodes.splice(gcodeIndex, 1);
-          if (mapping.gcodes.length === 0) {
+          if (mapping.gcodes.length === 0 && !mapping.triggerOnJobEnd) {
+            currentSettings.commandMappings.splice(mappingIndex, 1);
+          }
+          renderCommandMappings();
+        };
+
+        window.toggleJobEnd = function(deviceName, channelIndex, action, channelName, isChecked) {
+          const mappingIndex = getOrCreateMapping(deviceName, channelIndex, channelName, action);
+          currentSettings.commandMappings[mappingIndex].triggerOnJobEnd = isChecked;
+          if (!isChecked && currentSettings.commandMappings[mappingIndex].gcodes.length === 0) {
             currentSettings.commandMappings.splice(mappingIndex, 1);
           }
           renderCommandMappings();

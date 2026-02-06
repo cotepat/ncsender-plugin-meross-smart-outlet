@@ -1,7 +1,7 @@
 {
   "id": "com.ncsender.meross-smart-outlet",
   "name": "Meross Smart Outlet Controller",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "minAppVersion": "0.3.111",
   "author": "ncSender",
   "description": "Control Meross smart plug outlets via G-code commands (M8, M9, M65 P0-P3, M6 etc.)",
@@ -10,6 +10,6 @@
   "category": "utility",
   "repository": "https://github.com/cotepat/ncsender-plugin-meross-smart-outlet",
   "priority": 75,
-  "events": ["onBeforeCommand", "onBeforeGcodeLine"],
+  "events": ["onBeforeCommand", "onBeforeGcodeLine", "onAfterJobEnd"],
   "permissions": []
 }
