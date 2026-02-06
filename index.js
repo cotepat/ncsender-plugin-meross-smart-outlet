@@ -309,22 +309,46 @@ function registerCommandHandler(ctx) {
         const channelName = mapping.channelName || `Channel ${mapping.channelIndex}`;
         ctx.log(`Command matched: ${command} -> ${mapping.deviceName} / ${channelName} ${mapping.action}`);
 
-        const manager = merossManagers[mapping.deviceName];
-        if (!manager || !manager.isConnected()) {
-          ctx.log(`Device ${mapping.deviceName} not connected`);
-          continue;
-        }
-
-        await new Promise(resolve => setTimeout(resolve, settings.minSignalDuration));
-
-        if (mapping.action === 'on') {
-          await manager.turnOn(mapping.channelIndex);
-          ctx.log(`${mapping.deviceName} / ${channelName} turned ON`);
-        } else if (mapping.action === 'off') {
-          await manager.turnOff(mapping.channelIndex);
-          ctx.log(`${mapping.deviceName} / ${channelName} turned OFF`);
-        }
+        await executeMappingAction(mapping, settings, `Command matched: ${command}`);
       }
+    }
+  }
+
+  async function executeMappingAction(mapping, settings, reasonLabel) {
+    const channelName = mapping.channelName || `Channel ${mapping.channelIndex}`;
+    if (reasonLabel) {
+      ctx.log(`${reasonLabel} -> ${mapping.deviceName} / ${channelName} ${mapping.action}`);
+    }
+
+    const manager = merossManagers[mapping.deviceName];
+    if (!manager || !manager.isConnected()) {
+      ctx.log(`Device ${mapping.deviceName} not connected`);
+      return;
+    }
+
+    await new Promise(resolve => setTimeout(resolve, settings.minSignalDuration));
+
+    if (mapping.action === 'on') {
+      await manager.turnOn(mapping.channelIndex);
+      ctx.log(`${mapping.deviceName} / ${channelName} turned ON`);
+    } else if (mapping.action === 'off') {
+      await manager.turnOff(mapping.channelIndex);
+      ctx.log(`${mapping.deviceName} / ${channelName} turned OFF`);
+    }
+  }
+
+  async function applyMappingsForFlag(settings, flagName, reasonLabel) {
+    const mappings = settings.commandMappings || [];
+    const selected = mappings.filter(mapping => mapping[flagName]);
+    if (selected.length === 0) return;
+
+    const hasConnectedManagers = Object.values(merossManagers).some(m => m.isConnected());
+    if (!hasConnectedManagers) {
+      await initializeMerossConnection(ctx);
+    }
+
+    for (const mapping of selected) {
+      await executeMappingAction(mapping, settings, reasonLabel);
     }
   }
 
@@ -421,35 +445,27 @@ function registerCommandHandler(ctx) {
   ctx.registerEventHandler('onAfterJobEnd', async (context) => {
     try {
       const settings = await loadSettingsFromAPI(ctx);
-      const mappings = settings.commandMappings || [];
-      const jobEndMappings = mappings.filter(mapping => mapping.triggerOnJobEnd);
-      for (const mapping of jobEndMappings) {
-        const channelName = mapping.channelName || `Channel ${mapping.channelIndex}`;
-        ctx.log(`Job end trigger: ${mapping.deviceName} / ${channelName} ${mapping.action}`);
-
-        const hasConnectedManagers = Object.values(merossManagers).some(m => m.isConnected());
-        if (!hasConnectedManagers) {
-          await initializeMerossConnection(ctx);
-        }
-
-        const manager = merossManagers[mapping.deviceName];
-        if (!manager || !manager.isConnected()) {
-          ctx.log(`Device ${mapping.deviceName} not connected`);
-          continue;
-        }
-
-        await new Promise(resolve => setTimeout(resolve, settings.minSignalDuration));
-
-        if (mapping.action === 'on') {
-          await manager.turnOn(mapping.channelIndex);
-          ctx.log(`${mapping.deviceName} / ${channelName} turned ON`);
-        } else if (mapping.action === 'off') {
-          await manager.turnOff(mapping.channelIndex);
-          ctx.log(`${mapping.deviceName} / ${channelName} turned OFF`);
-        }
-      }
+      const reason = context && context.reason ? context.reason : 'job end';
+      await applyMappingsForFlag(settings, 'triggerOnJobEnd', `Job ${reason}`);
     } catch (error) {
       ctx.log('Error in job end handler:', error.message);
+    }
+  });
+
+  ctx.registerEventHandler('onAfterCommand', async (command, commandContext) => {
+    try {
+      const cleanCommand = (command || '').trim();
+      if (cleanCommand !== '!' && cleanCommand !== '~') {
+        return;
+      }
+      const settings = await loadSettingsFromAPI(ctx);
+      if (cleanCommand === '!') {
+        await applyMappingsForFlag(settings, 'triggerOnPause', 'Job paused');
+      } else if (cleanCommand === '~') {
+        await applyMappingsForFlag(settings, 'triggerOnResume', 'Job resumed');
+      }
+    } catch (error) {
+      ctx.log('Error in pause/resume handler:', error.message);
     }
   });
 }
@@ -753,6 +769,12 @@ function getConfigUiHtml() {
       .mapping-table th.job-end,
       .mapping-table td.job-end {
         width: 110px;
+        text-align: center;
+      }
+
+      .mapping-table th.pause-resume,
+      .mapping-table td.pause-resume {
+        width: 100px;
         text-align: center;
       }
 
@@ -1510,7 +1532,9 @@ function getConfigUiHtml() {
               channelName: channelName,
               action: action,
               gcodes: [],
-              triggerOnJobEnd: false
+              triggerOnJobEnd: false,
+              triggerOnPause: false,
+              triggerOnResume: false
             });
             mappingIndex = currentSettings.commandMappings.length - 1;
           }
@@ -1553,6 +1577,8 @@ function getConfigUiHtml() {
                 const rowId = 'gcode-input-row-' + rowIndex;
                 const actionLabel = action === 'on' ? 'Turn ON' : 'Turn OFF';
                 const isJobEnd = mapping && mapping.triggerOnJobEnd;
+                const isPause = mapping && mapping.triggerOnPause;
+                const isResume = mapping && mapping.triggerOnResume;
 
                 rowsHtml.push(
                   '<tr>' +
@@ -1563,6 +1589,18 @@ function getConfigUiHtml() {
                       '<label class="job-end-toggle">' +
                         '<input type="checkbox" ' + (isJobEnd ? 'checked' : '') +
                           ' onchange="toggleJobEnd(\\'' + deviceNameEsc + '\\', ' + chIndex + ', \\'' + action + '\\', \\'' + channelNameEsc + '\\', this.checked)">' +
+                      '</label>' +
+                    '</td>' +
+                    '<td class="pause-resume">' +
+                      '<label class="job-end-toggle">' +
+                        '<input type="checkbox" ' + (isPause ? 'checked' : '') +
+                          ' onchange="toggleMappingFlag(\\'' + deviceNameEsc + '\\', ' + chIndex + ', \\'' + action + '\\', \\'' + channelNameEsc + '\\', \\'triggerOnPause\\', this.checked)">' +
+                      '</label>' +
+                    '</td>' +
+                    '<td class="pause-resume">' +
+                      '<label class="job-end-toggle">' +
+                        '<input type="checkbox" ' + (isResume ? 'checked' : '') +
+                          ' onchange="toggleMappingFlag(\\'' + deviceNameEsc + '\\', ' + chIndex + ', \\'' + action + '\\', \\'' + channelNameEsc + '\\', \\'triggerOnResume\\', this.checked)">' +
                       '</label>' +
                     '</td>' +
                     '<td>' +
@@ -1588,6 +1626,8 @@ function getConfigUiHtml() {
                   '<th>Outlet</th>' +
                   '<th>Action</th>' +
                   '<th class="job-end">On Job End</th>' +
+                  '<th class="pause-resume">On Pause</th>' +
+                  '<th class="pause-resume">On Resume</th>' +
                   '<th>Mapping</th>' +
                 '</tr>' +
               '</thead>' +
@@ -1615,7 +1655,7 @@ function getConfigUiHtml() {
           if (mappingIndex === -1) return;
           const mapping = currentSettings.commandMappings[mappingIndex];
           mapping.gcodes.splice(gcodeIndex, 1);
-          if (mapping.gcodes.length === 0 && !mapping.triggerOnJobEnd) {
+          if (mapping.gcodes.length === 0 && !mapping.triggerOnJobEnd && !mapping.triggerOnPause && !mapping.triggerOnResume) {
             currentSettings.commandMappings.splice(mappingIndex, 1);
           }
           renderCommandMappings();
@@ -1624,7 +1664,20 @@ function getConfigUiHtml() {
         window.toggleJobEnd = function(deviceName, channelIndex, action, channelName, isChecked) {
           const mappingIndex = getOrCreateMapping(deviceName, channelIndex, channelName, action);
           currentSettings.commandMappings[mappingIndex].triggerOnJobEnd = isChecked;
-          if (!isChecked && currentSettings.commandMappings[mappingIndex].gcodes.length === 0) {
+          if (!isChecked && currentSettings.commandMappings[mappingIndex].gcodes.length === 0 &&
+              !currentSettings.commandMappings[mappingIndex].triggerOnPause &&
+              !currentSettings.commandMappings[mappingIndex].triggerOnResume) {
+            currentSettings.commandMappings.splice(mappingIndex, 1);
+          }
+          renderCommandMappings();
+        };
+
+        window.toggleMappingFlag = function(deviceName, channelIndex, action, channelName, flagName, isChecked) {
+          const mappingIndex = getOrCreateMapping(deviceName, channelIndex, channelName, action);
+          currentSettings.commandMappings[mappingIndex][flagName] = isChecked;
+          const mapping = currentSettings.commandMappings[mappingIndex];
+          if (!isChecked && mapping.gcodes.length === 0 &&
+              !mapping.triggerOnJobEnd && !mapping.triggerOnPause && !mapping.triggerOnResume) {
             currentSettings.commandMappings.splice(mappingIndex, 1);
           }
           renderCommandMappings();
