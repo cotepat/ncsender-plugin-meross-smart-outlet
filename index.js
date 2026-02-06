@@ -276,6 +276,58 @@ async function runDeviceDiscovery(ctx, settings) {
  * Register command handler
  */
 function registerCommandHandler(ctx) {
+  function normalizeGcodeCommand(value) {
+    return value.replace(/([GMT])0+(\d)/g, '$1$2');
+  }
+
+  async function processCommandForMappings(command, settings) {
+    const commandUpper = command.toUpperCase();
+    const normalizedCommand = normalizeGcodeCommand(commandUpper);
+
+    const hasConnectedManagers = Object.values(merossManagers).some(m => m.isConnected());
+    if (!hasConnectedManagers) {
+      await initializeMerossConnection(ctx);
+      const stillNoConnection = Object.values(merossManagers).every(m => !m.isConnected());
+      if (stillNoConnection) {
+        return;
+      }
+    }
+
+    for (const mapping of settings.commandMappings) {
+      const matches = mapping.gcodes.some(gcode => {
+        const gcodePattern = gcode.trim().toUpperCase();
+        const normalizedPattern = normalizeGcodeCommand(gcodePattern);
+
+        if (gcodePattern.includes(' ')) {
+          return normalizedCommand === normalizedPattern;
+        }
+
+        return normalizedCommand === normalizedPattern || normalizedCommand.startsWith(normalizedPattern + ' ');
+      });
+
+      if (matches) {
+        const channelName = mapping.channelName || `Channel ${mapping.channelIndex}`;
+        ctx.log(`Command matched: ${command} -> ${mapping.deviceName} / ${channelName} ${mapping.action}`);
+
+        const manager = merossManagers[mapping.deviceName];
+        if (!manager || !manager.isConnected()) {
+          ctx.log(`Device ${mapping.deviceName} not connected`);
+          continue;
+        }
+
+        await new Promise(resolve => setTimeout(resolve, settings.minSignalDuration));
+
+        if (mapping.action === 'on') {
+          await manager.turnOn(mapping.channelIndex);
+          ctx.log(`${mapping.deviceName} / ${channelName} turned ON`);
+        } else if (mapping.action === 'off') {
+          await manager.turnOff(mapping.channelIndex);
+          ctx.log(`${mapping.deviceName} / ${channelName} turned OFF`);
+        }
+      }
+    }
+  }
+
   ctx.registerEventHandler('onBeforeCommand', async (commands, context, pluginContext) => {
     try {
       const settings = await loadSettingsFromAPI(ctx);
@@ -283,8 +335,6 @@ function registerCommandHandler(ctx) {
       // Process each command
       for (const cmdObj of commands) {
         const command = cmdObj.command.trim();
-        const commandUpper = command.toUpperCase();
-        
         // Check if this is a discover devices command
         if (command === '$$DISCOVER_DEVICES$$') {
           ctx.log('Discovery command detected');
@@ -339,63 +389,32 @@ function registerCommandHandler(ctx) {
             return [];
           }
         }
-      
-      // Check if we have any connected managers, if not try to reconnect
-      const hasConnectedManagers = Object.values(merossManagers).some(m => m.isConnected());
-      if (!hasConnectedManagers) {
-        // Try to reconnect if not connected
-        await initializeMerossConnection(ctx);
-        const stillNoConnection = Object.values(merossManagers).every(m => !m.isConnected());
-        if (stillNoConnection) {
-          return commands; // Skip if still not connected
-        }
-      }
-        
-        // Check against all command mappings
-        for (const mapping of settings.commandMappings) {
-          // Check if command matches any of the gcodes for this mapping
-          const matches = mapping.gcodes.some(gcode => {
-            const gcodePattern = gcode.trim().toUpperCase();
-            
-            // Handle different pattern types
-            if (gcodePattern.includes(' ')) {
-              // Exact match with parameters (e.g., "M65 P0")
-              return commandUpper === gcodePattern;
-            } else {
-              // Match command code only (e.g., "M8" matches "M8" or "M8 P1")
-              return commandUpper === gcodePattern || commandUpper.startsWith(gcodePattern + ' ');
-            }
-          });
-          
-          if (matches) {
-            const channelName = mapping.channelName || `Channel ${mapping.channelIndex}`;
-            ctx.log(`Command matched: ${command} -> ${mapping.deviceName} / ${channelName} ${mapping.action}`);
-            
-            // Get manager for this device
-            const manager = merossManagers[mapping.deviceName];
-            if (!manager || !manager.isConnected()) {
-              ctx.log(`Device ${mapping.deviceName} not connected`);
-              continue;
-            }
-            
-            // Execute the action with debounce delay
-            await new Promise(resolve => setTimeout(resolve, settings.minSignalDuration));
-            
-            if (mapping.action === 'on') {
-              await manager.turnOn(mapping.channelIndex);
-              ctx.log(`${mapping.deviceName} / ${channelName} turned ON`);
-            } else if (mapping.action === 'off') {
-              await manager.turnOff(mapping.channelIndex);
-              ctx.log(`${mapping.deviceName} / ${channelName} turned OFF`);
-            }
-          }
-        }
+
+        await processCommandForMappings(command, settings);
       }
       
       return commands;
     } catch (error) {
       ctx.log('Error in command handler:', error.message);
       return commands;
+    }
+  });
+
+  ctx.registerEventHandler('onBeforeGcodeLine', async (line, context) => {
+    try {
+      if (!line || typeof line !== 'string') {
+        return line;
+      }
+      const settings = await loadSettingsFromAPI(ctx);
+      const command = line.trim();
+      if (!command) {
+        return line;
+      }
+      await processCommandForMappings(command, settings);
+      return line;
+    } catch (error) {
+      ctx.log('Error in gcode line handler:', error.message);
+      return line;
     }
   });
 }
